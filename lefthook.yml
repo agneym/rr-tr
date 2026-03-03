@@ -1,0 +1,13 @@
+# EXAMPLE USAGE:
+#
+#   Refer for explanation to following link:
+#   https://lefthook.dev/configuration/
+
+pre-commit:
+  jobs:
+    - run: bunx prettier --write {staged_files} --ignore-unknown
+      glob: '**/*.{js,ts,jsx,tsx}'
+      stage_fixed: true
+    - run: bunx eslint {staged_files} --fix
+      glob: '**/*.{js,ts,jsx,tsx}'
+      stage_fixed: true
