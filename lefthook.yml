@@ -6,8 +6,8 @@
 pre-commit:
   jobs:
     - run: bunx prettier --write {staged_files} --ignore-unknown
-      glob: '**/*.{js,ts,jsx,tsx}'
+      glob: "**/*.{js,ts,jsx,tsx}"
       stage_fixed: true
     - run: bunx eslint {staged_files} --fix
-      glob: '**/*.{js,ts,jsx,tsx}'
+      glob: "**/*.{js,ts,jsx,tsx}"
       stage_fixed: true
