@@ -9,7 +9,8 @@
     "format": "prettier --write .",
     "lint": "eslint .",
     "preview": "rsbuild preview",
-    "fmt": "prettier --write . --ignore-unknown"
+    "fmt": "prettier --write . --ignore-unknown",
+    "test": "vitest"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.163.3",
@@ -27,6 +28,7 @@
     "@tanstack/router-plugin": "^1.164.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@vitest/browser-playwright": "^4.0.18",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
@@ -35,6 +37,7 @@
     "prettier": "^3.7.3",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.48.0"
+    "typescript-eslint": "^8.48.0",
+    "vitest": "^4.0.18"
   }
 }
