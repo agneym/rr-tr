@@ -1,5 +1,6 @@
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
+import type { Action, Location } from "history";
 import { memoryHistory } from "./memory-history";
 
 function parseSearch(search: string): Record<string, string> {
@@ -11,42 +12,50 @@ function parseSearch(search: string): Record<string, string> {
   return params;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildPath(loc: any): string {
+  return loc.pathname + (loc.searchStr || loc.search || "") + (loc.hash || "");
+}
+
 export function RouterSync() {
   const router = useRouter();
   const location = useRouterState({ select: (s) => s.location });
+  const isSyncing = useRef(false);
 
   // Forward sync: TanStack Router → MemoryRouter
   useLayoutEffect(() => {
-    const target =
-      location.pathname + (location.searchStr || "") + (location.hash || "");
-    const current =
-      memoryHistory.location.pathname +
-      memoryHistory.location.search +
-      memoryHistory.location.hash;
+    if (isSyncing.current) return;
+
+    const target = buildPath(location);
+    const current = buildPath(memoryHistory.location);
     if (current !== target) {
+      isSyncing.current = true;
       memoryHistory.replace(target, location.state);
+      isSyncing.current = false;
     }
   }, [location.pathname, location.searchStr, location.hash, location.state]);
 
   // Reverse sync: MemoryRouter → TanStack Router
   useLayoutEffect(() => {
-    const unlisten = memoryHistory.listen((memLocation) => {
-      const memPath =
-        memLocation.pathname + memLocation.search + memLocation.hash;
-      const tsLocation = router.state.location;
-      const tsPath =
-        tsLocation.pathname +
-        (tsLocation.searchStr || "") +
-        (tsLocation.hash || "");
-      if (memPath !== tsPath) {
-        router.navigate({
-          to: memLocation.pathname,
-          search: parseSearch(memLocation.search),
-          hash: memLocation.hash,
-          state: memLocation.state as Record<string, unknown>,
-        });
-      }
-    });
+    const unlisten = memoryHistory.listen(
+      (memLocation: Location, action: Action) => {
+        if (isSyncing.current) return;
+
+        const memPath = buildPath(memLocation);
+        const tsPath = buildPath(router.state.location);
+        if (memPath !== tsPath) {
+          isSyncing.current = true;
+          router.navigate({
+            to: memLocation.pathname,
+            search: parseSearch(memLocation.search),
+            hash: memLocation.hash,
+            state: memLocation.state as Record<string, unknown>,
+            replace: action === "REPLACE",
+          });
+          isSyncing.current = false;
+        }
+      },
+    );
     return unlisten;
   }, [router]);
 
