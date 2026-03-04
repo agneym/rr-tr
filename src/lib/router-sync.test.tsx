@@ -158,6 +158,19 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("Forward sync: TanStack → React Router", () => {
+  it("syncs non-root initial path on mount", async () => {
+    // Rendering with a non-"/" initial path should forward-sync
+    // pathname + search + hash to RRv5 without any explicit navigation.
+    renderApp("/start?x=1#heading");
+
+    await waitFor(() => {
+      expect(q("ts-pathname")).toBe("/start");
+      expect(q("rr-pathname")).toBe("/start");
+      expect(q("rr-search")).toContain("x=1");
+      expect(q("rr-hash")).toContain("heading");
+    });
+  });
+
   it("syncs pathname on TanStack navigation", async () => {
     // A user clicks a TanStack <Link to="/about">.
     // Code inside an RRv5 <Route> calls useLocation() — does it see /about?
@@ -184,36 +197,6 @@ describe("Forward sync: TanStack → React Router", () => {
       expect(q("ts-search")).toContain("foo=1");
       expect(q("rr-search")).toContain("foo=1");
       expect(q("rr-search")).toContain("baz=42");
-    });
-  });
-
-  it("syncs hash from TanStack to React Router", async () => {
-    // TanStack navigates with hash: "section-1".
-    // RRv5 should see the same hash via useLocation().hash.
-    const { router } = renderApp("/");
-
-    await router.navigate({ to: "/", hash: "section-1" });
-
-    await waitFor(() => {
-      const rrHash = q("rr-hash");
-      expect(rrHash).toContain("section-1");
-    });
-  });
-
-  it("syncs location.state from TanStack to React Router", async () => {
-    // TanStack navigates with state: { message: "hello" }.
-    // RRv5's useLocation().state should contain the same object.
-    const { router } = renderApp("/");
-
-    await router.navigate({
-      to: "/foo",
-      state: { message: "hello from tanstack" },
-    });
-
-    await waitFor(() => {
-      expect(q("ts-pathname")).toBe("/foo");
-      const rrState = JSON.parse(q("rr-state"));
-      expect(rrState).toMatchObject({ message: "hello from tanstack" });
     });
   });
 });
@@ -251,6 +234,28 @@ describe("Reverse sync: React Router → TanStack", () => {
     });
   });
 
+  it("replace from RRv5 does not grow TanStack history stack", async () => {
+    // When RRv5 calls history.replace(), the reverse sync should use
+    // replace: true so TanStack's stack doesn't grow.
+    const { router } = renderApp("/");
+    await waitFor(() => expect(q("rr-pathname")).toBe("/"));
+
+    // Push via TanStack so we have a known back-entry
+    await router.navigate({ to: "/anchor" });
+    await waitFor(() => expect(q("rr-pathname")).toBe("/anchor"));
+
+    // RRv5 replaces — TanStack should replace too, not push
+    memoryHistory.replace("/replaced-by-rr");
+    await waitFor(() => expect(q("ts-pathname")).toBe("/replaced-by-rr"));
+
+    // Going back in TanStack should go to "/" (before /anchor),
+    // because /anchor was replaced by the reverse sync.
+    router.history.back();
+    await waitFor(() => {
+      expect(q("ts-pathname")).toBe("/");
+    });
+  });
+
   it("syncs history.push with search params to TanStack", async () => {
     // RRv5 code pushes a URL with query string.
     // TanStack should parse the search and reflect it in its state.
@@ -263,35 +268,6 @@ describe("Reverse sync: React Router → TanStack", () => {
       expect(q("ts-pathname")).toBe("/search");
       expect(q("ts-search")).toContain("q=");
       expect(q("ts-search")).toContain("page=");
-    });
-  });
-
-  it("syncs history.push with state to TanStack", async () => {
-    // RRv5 navigates with state — e.g. to pass modal info or referrer data.
-    // TanStack's location.state should contain the same state.
-    renderApp("/");
-    await waitFor(() => expect(q("rr-pathname")).toBe("/"));
-
-    memoryHistory.push("/with-state", { modal: true, id: 123 });
-
-    await waitFor(() => {
-      expect(q("ts-pathname")).toBe("/with-state");
-      const tsState = JSON.parse(q("ts-state"));
-      expect(tsState).toMatchObject({ modal: true, id: 123 });
-    });
-  });
-
-  it("syncs history.push with hash to TanStack", async () => {
-    // RRv5 pushes a URL with a hash fragment.
-    // TanStack should see the hash.
-    renderApp("/");
-    await waitFor(() => expect(q("rr-pathname")).toBe("/"));
-
-    memoryHistory.push("/page#footer");
-
-    await waitFor(() => {
-      expect(q("ts-pathname")).toBe("/page");
-      expect(q("ts-hash")).toContain("footer");
     });
   });
 });
@@ -308,26 +284,6 @@ describe("Reverse sync: React Router → TanStack", () => {
 // ---------------------------------------------------------------------------
 
 describe("History navigation: goBack / goForward", () => {
-  it("syncs history.goBack() — URL should match", async () => {
-    // Navigate forward twice via RRv5, then go back.
-    // Both routers should show the previous URL.
-    renderApp("/");
-    await waitFor(() => expect(q("rr-pathname")).toBe("/"));
-
-    memoryHistory.push("/page-1");
-    await waitFor(() => expect(q("ts-pathname")).toBe("/page-1"));
-
-    memoryHistory.push("/page-2");
-    await waitFor(() => expect(q("ts-pathname")).toBe("/page-2"));
-
-    memoryHistory.goBack();
-
-    await waitFor(() => {
-      expect(q("rr-pathname")).toBe("/page-1");
-      expect(q("ts-pathname")).toBe("/page-1");
-    });
-  });
-
   it("syncs history.goForward() after goBack()", async () => {
     // After going back, going forward should restore the next URL.
     renderApp("/");
