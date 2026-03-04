@@ -14,7 +14,20 @@ function parseSearch(search: string): Record<string, string> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildPath(loc: any): string {
-  return loc.pathname + (loc.searchStr || loc.search || "") + (loc.hash || "");
+  // TanStack: searchStr is the string form, search is a parsed object
+  // history v4: search is a string like "?foo=bar"
+  const search =
+    typeof loc.searchStr === "string"
+      ? loc.searchStr
+      : typeof loc.search === "string"
+        ? loc.search
+        : "";
+  const hash = loc.hash
+    ? loc.hash.startsWith("#")
+      ? loc.hash
+      : "#" + loc.hash
+    : "";
+  return loc.pathname + search + hash;
 }
 
 export function RouterSync() {
