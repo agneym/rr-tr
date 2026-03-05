@@ -3,15 +3,6 @@ import { useRouter, useRouterState } from "@tanstack/react-router";
 import type { Action, Location } from "history";
 import { memoryHistory } from "./memory-history";
 
-function parseSearch(search: string): Record<string, string> {
-  const params: Record<string, string> = {};
-  const sp = new URLSearchParams(search);
-  sp.forEach((value, key) => {
-    params[key] = value;
-  });
-  return params;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildPath(loc: any): string {
   // TanStack: searchStr is the string form, search is a parsed object
@@ -58,13 +49,17 @@ export function RouterSync() {
         const tsPath = buildPath(router.state.location);
         if (memPath !== tsPath) {
           isSyncing.current = true;
-          router.navigate({
-            to: memLocation.pathname,
-            search: parseSearch(memLocation.search),
-            hash: memLocation.hash,
-            state: memLocation.state as Record<string, unknown>,
-            replace: action === "REPLACE",
-          });
+          if (action === "REPLACE") {
+            router.history.replace(
+              memPath,
+              memLocation.state as Record<string, unknown>,
+            );
+          } else {
+            router.history.push(
+              memPath,
+              memLocation.state as Record<string, unknown>,
+            );
+          }
           isSyncing.current = false;
         }
       },

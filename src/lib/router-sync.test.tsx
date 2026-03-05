@@ -278,9 +278,9 @@ describe("Reverse sync: React Router → TanStack", () => {
 // KNOWN CONCERN: The sync engine's reverse listener only distinguishes
 // REPLACE vs everything-else (treating POP as PUSH). When RRv5 fires
 // history.goBack(), the listener receives a POP action and calls
-// router.navigate({ replace: false }), which PUSHES a new TanStack
-// history entry instead of going back. The URL will be correct, but
-// TanStack's history stack will grow instead of unwinding.
+// router.history.push(), which PUSHES a new TanStack history entry
+// instead of going back. The URL will be correct, but TanStack's
+// history stack will grow instead of unwinding.
 // ---------------------------------------------------------------------------
 
 describe("History navigation: goBack / goForward", () => {
@@ -355,27 +355,26 @@ describe("Search params edge cases", () => {
     });
   });
 
-  it.fails("loses multi-value search params (parseSearch bug)", async () => {
-    // KNOWN BUG: parseSearch() stores params in Record<string, string>.
-    // When the same key appears multiple times (?tag=a&tag=b&tag=c),
-    // only the LAST value survives because each iteration overwrites
-    // the previous one. This means TanStack will only see tag=angular.
-    renderApp("/");
-    await waitFor(() => expect(q("rr-pathname")).toBe("/"));
+  it.fails(
+    "loses multi-value search params (TanStack serializer re-encodes them)",
+    async () => {
+      // TanStack Router's default search serializer parses ?tag=a&tag=b as
+      // tag: ["a","b"] and re-serializes it as ?tag=["a","b"] (JSON-encoded).
+      // This is TanStack Router behavior, not a sync engine bug.
+      renderApp("/");
+      await waitFor(() => expect(q("rr-pathname")).toBe("/"));
 
-    memoryHistory.push("/filter?tag=react&tag=vue&tag=angular");
+      memoryHistory.push("/filter?tag=react&tag=vue&tag=angular");
 
-    await waitFor(() => {
-      expect(q("ts-pathname")).toBe("/filter");
-      const tsSearch = q("ts-search");
-      // These SHOULD all be present if multi-value params are preserved.
-      // We expect this to FAIL for "react" and "vue" because parseSearch
-      // collapses them into a single key.
-      expect(tsSearch).toContain("tag=react");
-      expect(tsSearch).toContain("tag=vue");
-      expect(tsSearch).toContain("tag=angular");
-    });
-  });
+      await waitFor(() => {
+        expect(q("ts-pathname")).toBe("/filter");
+        const tsSearch = q("ts-search");
+        expect(tsSearch).toContain("tag=react");
+        expect(tsSearch).toContain("tag=vue");
+        expect(tsSearch).toContain("tag=angular");
+      });
+    },
+  );
 
   it("clears search params when navigating to a path without search", async () => {
     // Navigate to /foo?bar=1, then to /foo with no search.
