@@ -95,7 +95,7 @@ export function RouterSync() {
       } else if (action?.type === "REPLACE") {
         memoryHistory.replace(target, location.state);
       } else {
-        // PUSH or untracked (e.g. browser popstate) — grow the stack
+        // PUSH or untracked (e.g. subscribe not yet mounted) — grow the stack
         memoryHistory.push(target, location.state);
       }
 
