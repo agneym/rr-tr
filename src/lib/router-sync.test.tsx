@@ -615,7 +615,7 @@ describe("Edge cases", () => {
     await waitFor(() => expect(q("ts-pathname")).toBe("/anchor"));
 
     // Now TanStack navigates — forward sync should REPLACE in memoryHistory
-    await router.navigate({ to: "/replaced-dest" });
+    await router.navigate({ to: "/replaced-dest", replace: true });
     await waitFor(() => expect(q("rr-pathname")).toBe("/replaced-dest"));
 
     // Going back in RRv5 should go to "/" (before /anchor), not to /anchor,
