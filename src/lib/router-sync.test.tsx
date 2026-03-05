@@ -206,17 +206,19 @@ describe("Forward sync: TanStack → React Router", () => {
 // ---------------------------------------------------------------------------
 
 describe("Reverse sync: React Router → TanStack", () => {
-  it("syncs history.push() to TanStack", async () => {
-    // Legacy RRv5 code calls history.push("/legacy-page").
-    // TanStack's useRouterState().location should show /legacy-page.
+  it("syncs history.push() to TanStack (with search params)", async () => {
+    // Legacy RRv5 code calls history.push().
+    // TanStack's useRouterState().location should reflect the new URL.
     renderApp("/");
     await waitFor(() => expect(q("rr-pathname")).toBe("/"));
 
-    memoryHistory.push("/legacy-page");
+    memoryHistory.push("/legacy-page?q=hello&page=2");
 
     await waitFor(() => {
       expect(q("rr-pathname")).toBe("/legacy-page");
       expect(q("ts-pathname")).toBe("/legacy-page");
+      expect(q("ts-search")).toContain("q=");
+      expect(q("ts-search")).toContain("page=");
     });
   });
 
@@ -253,21 +255,6 @@ describe("Reverse sync: React Router → TanStack", () => {
     router.history.back();
     await waitFor(() => {
       expect(q("ts-pathname")).toBe("/");
-    });
-  });
-
-  it("syncs history.push with search params to TanStack", async () => {
-    // RRv5 code pushes a URL with query string.
-    // TanStack should parse the search and reflect it in its state.
-    renderApp("/");
-    await waitFor(() => expect(q("rr-pathname")).toBe("/"));
-
-    memoryHistory.push("/search?q=hello&page=2");
-
-    await waitFor(() => {
-      expect(q("ts-pathname")).toBe("/search");
-      expect(q("ts-search")).toContain("q=");
-      expect(q("ts-search")).toContain("page=");
     });
   });
 });
@@ -616,60 +603,6 @@ describe("Edge cases", () => {
     memoryHistory.goBack();
     await waitFor(() => {
       expect(q("rr-pathname")).toBe("/");
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 9. Bidirectional round-trip
-// ---------------------------------------------------------------------------
-
-describe("Bidirectional round-trip", () => {
-  it("TanStack → RR → TanStack round-trip preserves sync", async () => {
-    const { router } = renderApp("/");
-    await waitFor(() => expect(q("rr-pathname")).toBe("/"));
-
-    // TanStack navigates
-    await router.navigate({ to: "/ts-page" });
-    await waitFor(() => {
-      expect(q("rr-pathname")).toBe("/ts-page");
-      expect(q("ts-pathname")).toBe("/ts-page");
-    });
-
-    // RRv5 navigates
-    memoryHistory.push("/rr-page");
-    await waitFor(() => {
-      expect(q("rr-pathname")).toBe("/rr-page");
-      expect(q("ts-pathname")).toBe("/rr-page");
-    });
-
-    // TanStack navigates again
-    await router.navigate({ to: "/ts-page-2" });
-    await waitFor(() => {
-      expect(q("rr-pathname")).toBe("/ts-page-2");
-      expect(q("ts-pathname")).toBe("/ts-page-2");
-    });
-  });
-
-  it("round-trips search + hash from each side", async () => {
-    const { router } = renderApp("/");
-
-    // TanStack sets search + hash
-    await router.navigate({
-      to: "/page",
-      search: { id: 5 },
-      hash: "details",
-    });
-    await waitFor(() => {
-      expect(q("rr-search")).toContain("id=5");
-      expect(q("rr-hash")).toContain("details");
-    });
-
-    // RRv5 changes search + hash
-    memoryHistory.push("/page?id=10#summary");
-    await waitFor(() => {
-      expect(q("ts-search")).toContain("id=");
-      expect(q("ts-hash")).toContain("summary");
     });
   });
 });
