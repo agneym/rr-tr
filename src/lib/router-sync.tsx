@@ -41,44 +41,26 @@ export function RouterSync() {
   const prevIndexRef = useRef(memoryHistory.index);
   const lastTsActionRef = useRef<TsAction | null>(null);
 
-  // Intercept TanStack history methods to track the action type,
-  // since TanStack's subscribe/location API doesn't expose it.
+  // Track TanStack history action types via subscribe().
+  // This captures ALL navigations including browser popstate events,
+  // which bypass programmatic methods like go/back/forward.
   useLayoutEffect(() => {
-    const h = router.history;
-    const origPush = h.push;
-    const origReplace = h.replace;
-    const origGo = h.go;
-    const origBack = h.back;
-    const origForward = h.forward;
-
-    h.push = function (...args) {
-      lastTsActionRef.current = { type: "PUSH" };
-      return origPush.apply(this, args);
-    };
-    h.replace = function (...args) {
-      lastTsActionRef.current = { type: "REPLACE" };
-      return origReplace.apply(this, args);
-    };
-    h.go = function (delta) {
-      lastTsActionRef.current = { type: "POP", delta };
-      return origGo.call(this, delta);
-    };
-    h.back = function () {
-      lastTsActionRef.current = { type: "POP", delta: -1 };
-      return origBack.call(this);
-    };
-    h.forward = function () {
-      lastTsActionRef.current = { type: "POP", delta: 1 };
-      return origForward.call(this);
-    };
-
-    return () => {
-      h.push = origPush;
-      h.replace = origReplace;
-      h.go = origGo;
-      h.back = origBack;
-      h.forward = origForward;
-    };
+    return router.history.subscribe(({ action }) => {
+      if (action.type === "PUSH") {
+        lastTsActionRef.current = { type: "PUSH" };
+      } else if (action.type === "REPLACE") {
+        lastTsActionRef.current = { type: "REPLACE" };
+      } else if (action.type === "GO") {
+        lastTsActionRef.current = {
+          type: "POP",
+          delta: (action as { type: "GO"; index: number }).index,
+        };
+      } else if (action.type === "BACK") {
+        lastTsActionRef.current = { type: "POP", delta: -1 };
+      } else if (action.type === "FORWARD") {
+        lastTsActionRef.current = { type: "POP", delta: 1 };
+      }
+    });
   }, [router]);
 
   // Forward sync: TanStack Router → MemoryRouter

@@ -274,13 +274,6 @@ describe("Reverse sync: React Router → TanStack", () => {
 
 // ---------------------------------------------------------------------------
 // 3. history.goBack / history.goForward
-//
-// KNOWN CONCERN: The sync engine's reverse listener only distinguishes
-// REPLACE vs everything-else (treating POP as PUSH). When RRv5 fires
-// history.goBack(), the listener receives a POP action and calls
-// router.history.push(), which PUSHES a new TanStack history entry
-// instead of going back. The URL will be correct, but TanStack's
-// history stack will grow instead of unwinding.
 // ---------------------------------------------------------------------------
 
 describe("History navigation: goBack / goForward", () => {
