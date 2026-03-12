@@ -86,11 +86,17 @@ export function RouterSync() {
       const action = lastTsActionRef.current;
       lastTsActionRef.current = null;
 
-      if (action?.type === "POP") {
+      if (
+        action?.type === "POP" &&
+        Number.isFinite(action.delta) &&
+        action.delta !== 0
+      ) {
         // Mirror the exact back/forward delta into memoryHistory.
         // Using the captured delta rather than a path-based lookup avoids
         // jumping to the wrong entry when the same path appears multiple
         // times in the history stack (e.g. /a → /b → /a).
+        // Guard against NaN/invalid delta (e.g. when __TSR_index is missing
+        // from history state) which would corrupt memoryHistory's internal index.
         memoryHistory.go(action.delta);
       } else if (action?.type === "REPLACE") {
         memoryHistory.replace(target, location.state);
